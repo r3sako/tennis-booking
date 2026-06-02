@@ -1,0 +1,61 @@
+# Production stack for a single VPS (e.g. Hetzner): app + Postgres + Caddy.
+# Everything runs on one box. Postgres data and TLS certs live in named
+# volumes, so they survive restarts and redeploys.
+#
+# Usage on the server:
+#   cp .env.prod.example .env   # then fill in real values
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tennis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tennis
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tennis -d tennis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tennis:${POSTGRES_PASSWORD}@db:5432/tennis
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_KEY: ${ADMIN_KEY}
+      BOT_TOKEN: ${BOT_TOKEN}
+      TG_BOT_USERNAME: ${TG_BOT_USERNAME}
+      NOTIFY_CHAT_ID: ${NOTIFY_CHAT_ID}
+      NOTIFY_NEW_BOOKING: ${NOTIFY_NEW_BOOKING}
+      PORT: "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"          # internal only; not published to the host
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
