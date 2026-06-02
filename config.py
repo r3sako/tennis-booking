@@ -5,7 +5,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+def _normalize_db_url(url: str) -> str:
+    """Force the asyncpg driver regardless of how the URL is provided.
+
+    Render (and most managed Postgres) hand out URLs like
+    ``postgres://...`` or ``postgresql://...``. SQLAlchemy's async engine
+    needs the ``postgresql+asyncpg://...`` driver scheme, so we rewrite it
+    here — paste the Render URL as-is and it just works.
+    """
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = "postgresql+asyncpg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+    # Strip a libpq-style ?sslmode=... query that asyncpg doesn't accept.
+    if "?" in url:
+        url = url.split("?", 1)[0]
+    return url
+
+
+DATABASE_URL = _normalize_db_url(os.getenv("DATABASE_URL", ""))
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 TG_BOT_USERNAME = os.getenv("TG_BOT_USERNAME", "").strip()
 SECRET_KEY = os.getenv("SECRET_KEY", "change_me_random_string")
