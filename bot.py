@@ -153,7 +153,17 @@ async def run_login_bot() -> None:
 
     async def on_start(message, command) -> None:
         token = (command.args or "").strip()
-        entry = _login_tokens.get(token) if token else None
+        logger.info(
+            "Login /start from user=%s token=%r known_tokens=%d",
+            message.from_user.id, token, len(_login_tokens),
+        )
+        if not token:
+            await message.answer(
+                "Чтобы войти, откройте сайт и нажмите кнопку «Войти через Telegram» — "
+                "она откроет этот чат с одноразовой ссылкой."
+            )
+            return
+        entry = _login_tokens.get(token)
         if not entry or entry["status"] != "pending":
             await message.answer(
                 "Ссылка для входа устарела. Обновите страницу входа и попробуйте снова."
