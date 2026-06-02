@@ -3,13 +3,55 @@
 The bot is optional: if BOT_TOKEN is not set, all calls become no-ops so the
 app runs fine without Telegram notifications.
 """
+import asyncio
 import logging
+import secrets
+import time
 
-from config import ALLOWED_CHAT_ID, BOT_TOKEN, NOTIFY_CHAT_ID, NOTIFY_NEW_BOOKING
+from config import (
+    ALLOWED_CHAT_ID,
+    BOT_TOKEN,
+    NOTIFY_CHAT_ID,
+    NOTIFY_NEW_BOOKING,
+    TG_BOT_USERNAME,
+)
 
 logger = logging.getLogger("bot")
 
 _bot = None
+
+# --------------------------------------------------------------------------- #
+# Deep-link login token store (in-memory; single-process app).
+#   token -> {"status": "pending"|"ok"|"forbidden", "user": {...}|None, "ts": float}
+# --------------------------------------------------------------------------- #
+_LOGIN_TTL = 300  # seconds a login link stays valid
+_login_tokens: dict[str, dict] = {}
+
+
+def _prune_tokens() -> None:
+    now = time.time()
+    for tok in [k for k, v in _login_tokens.items() if now - v["ts"] > _LOGIN_TTL]:
+        _login_tokens.pop(tok, None)
+
+
+def create_login_token() -> str:
+    _prune_tokens()
+    token = secrets.token_urlsafe(16)
+    _login_tokens[token] = {"status": "pending", "user": None, "ts": time.time()}
+    return token
+
+
+def login_url(token: str) -> str:
+    return f"https://t.me/{TG_BOT_USERNAME}?start={token}"
+
+
+def get_login_entry(token: str) -> dict | None:
+    _prune_tokens()
+    return _login_tokens.get(token)
+
+
+def consume_login_token(token: str) -> None:
+    _login_tokens.pop(token, None)
 
 
 def _get_bot():
@@ -89,6 +131,58 @@ async def notify_new_booking(d, hour: int, username: str | None, name: str) -> N
         f"{_fmt_date(d)} {hour}:00–{hour + 1}:00"
     )
     await _send(text)
+
+
+async def run_login_bot() -> None:
+    """Listen for /start <token> deep links and complete website logins.
+
+    The user opens https://t.me/<bot>?start=<token>, presses Start, and the
+    bot binds their verified Telegram identity to that login token. The
+    website (polling /auth/tg/poll) then receives a session. No-op if the
+    bot is disabled.
+    """
+    bot = _get_bot()
+    if bot is None:
+        logger.info("BOT_TOKEN not set — deep-link login disabled")
+        return
+
+    from aiogram import Dispatcher
+    from aiogram.filters import CommandStart
+
+    dp = Dispatcher()
+
+    async def on_start(message, command) -> None:
+        token = (command.args or "").strip()
+        entry = _login_tokens.get(token) if token else None
+        if not entry or entry["status"] != "pending":
+            await message.answer(
+                "Ссылка для входа устарела. Обновите страницу входа и попробуйте снова."
+            )
+            return
+
+        u = message.from_user
+        if not await is_chat_member(u.id):
+            entry["status"] = "forbidden"
+            await message.answer("Доступ только для жильцов дома — участников чата.")
+            return
+
+        name = ((u.first_name or "") + " " + (u.last_name or "")).strip()
+        name = name or (u.username or str(u.id))
+        entry["user"] = {
+            "tg_user_id": u.id,
+            "tg_username": u.username,
+            "tg_name": name,
+        }
+        entry["status"] = "ok"
+        await message.answer("✅ Готово! Вернитесь на сайт — вы уже вошли.")
+
+    dp.message.register(on_start, CommandStart())
+
+    logger.info("Login bot started (long polling)")
+    try:
+        await dp.start_polling(bot, handle_signals=False, drop_pending_updates=True)
+    except asyncio.CancelledError:
+        pass
 
 
 async def close_bot() -> None:

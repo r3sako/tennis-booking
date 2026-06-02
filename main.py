@@ -12,10 +12,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import bookings as bk
 from auth import create_session_token, get_current_user, verify_telegram_auth
-from bot import close_bot, is_chat_member, notify_cancellation, notify_new_booking
+from bot import (
+    close_bot,
+    consume_login_token,
+    create_login_token,
+    get_login_entry,
+    is_chat_member,
+    login_url,
+    notify_cancellation,
+    notify_new_booking,
+    run_login_bot,
+)
 from config import (
     ADMIN_KEY,
     BOOKING_WINDOW_DAYS,
+    BOT_TOKEN,
     COOKIE_NAME,
     COOKIE_SECURE,
     JWT_EXPIRE_DAYS,
@@ -54,8 +65,10 @@ async def lifespan(app: FastAPI):
     # Data retention: drop everything before today (Moscow), now and on a timer.
     await _run_cleanup("Startup")
     cleanup_task = asyncio.create_task(_periodic_cleanup())
+    bot_task = asyncio.create_task(run_login_bot())
     yield
     cleanup_task.cancel()
+    bot_task.cancel()
     await close_bot()
 
 
@@ -200,6 +213,51 @@ async def logout():
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie(COOKIE_NAME)
     return response
+
+
+# --------------------------------------------------------------------------- #
+# Deep-link login via the bot
+# --------------------------------------------------------------------------- #
+@app.post("/auth/tg/start")
+async def tg_login_start():
+    """Issue a one-time login token and the t.me deep link to open the bot."""
+    if not BOT_TOKEN or not TG_BOT_USERNAME:
+        return JSONResponse(
+            {"error": "Вход через Telegram не настроен"}, status_code=503
+        )
+    token = create_login_token()
+    return {"token": token, "url": login_url(token)}
+
+
+@app.get("/auth/tg/poll")
+async def tg_login_poll(token: str):
+    """Frontend polls this until the user confirms in Telegram.
+
+    Returns: pending | ok (sets session cookie) | forbidden | expired.
+    """
+    entry = get_login_entry(token)
+    if entry is None:
+        return {"status": "expired"}
+    if entry["status"] == "forbidden":
+        consume_login_token(token)
+        return {"status": "forbidden"}
+    if entry["status"] == "ok":
+        u = entry["user"]
+        consume_login_token(token)
+        jwt_token = create_session_token(
+            u["tg_user_id"], u["tg_username"], u["tg_name"]
+        )
+        response = JSONResponse({"status": "ok"})
+        response.set_cookie(
+            key=COOKIE_NAME,
+            value=jwt_token,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite="lax",
+            max_age=JWT_EXPIRE_DAYS * 86400,
+        )
+        return response
+    return {"status": "pending"}
 
 
 # --------------------------------------------------------------------------- #

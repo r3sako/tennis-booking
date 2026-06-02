@@ -14,36 +14,84 @@
         {% endif %}
 
         {% if bot_username %}
-        <div class="flex justify-center">
-            <script async src="https://telegram.org/js/telegram-widget.js?22"
-                data-telegram-login="{{ bot_username }}"
-                data-size="large"
-                data-radius="10"
-                data-onauth="onTelegramAuth(user)"
-                data-request-access="write"></script>
-        </div>
+        <button id="tg-login"
+            class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl
+                   bg-sky-500 text-white font-medium hover:bg-sky-600 transition
+                   disabled:opacity-60 disabled:cursor-not-allowed">
+            <svg viewBox="0 0 24 24" class="w-5 h-5" fill="currentColor" aria-hidden="true">
+                <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71l-4.14-3.05-1.99 1.93c-.23.23-.42.42-.83.42z"/>
+            </svg>
+            Войти через Telegram
+        </button>
+        <p id="tg-status" class="text-sm text-slate-500 mt-4 hidden"></p>
+
         <script>
-            // Telegram passes the authenticated user object to this callback.
-            // We POST it to /auth/telegram as a real form submit so the 302
-            // redirect and Set-Cookie happen as a top-level navigation.
-            function onTelegramAuth(user) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/auth/telegram';
-                Object.keys(user).forEach((key) => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = user[key];
-                    form.appendChild(input);
-                });
-                document.body.appendChild(form);
-                form.submit();
+        (function () {
+            const btn = document.getElementById('tg-login');
+            const status = document.getElementById('tg-status');
+            let timer = null, timeout = null;
+
+            function setStatus(text) {
+                status.textContent = text;
+                status.classList.remove('hidden');
             }
+            function stop() {
+                if (timer) { clearInterval(timer); timer = null; }
+                if (timeout) { clearTimeout(timeout); timeout = null; }
+            }
+
+            async function poll(token) {
+                let data;
+                try {
+                    const r = await fetch('/auth/tg/poll?token=' + encodeURIComponent(token));
+                    data = await r.json();
+                } catch (e) { return; }
+                if (data.status === 'ok') {
+                    stop();
+                    setStatus('Готово! Входим…');
+                    window.location.href = '/';
+                } else if (data.status === 'forbidden') {
+                    stop();
+                    setStatus('Доступ только для жильцов дома — участников чата.');
+                    btn.disabled = false;
+                } else if (data.status === 'expired') {
+                    stop();
+                    setStatus('Ссылка устарела. Нажмите кнопку ещё раз.');
+                    btn.disabled = false;
+                }
+            }
+
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                setStatus('Открываем Telegram…');
+                let data;
+                try {
+                    const r = await fetch('/auth/tg/start', { method: 'POST' });
+                    data = await r.json();
+                } catch (e) {
+                    setStatus('Ошибка соединения. Попробуйте ещё раз.');
+                    btn.disabled = false;
+                    return;
+                }
+                if (!data.url) {
+                    setStatus(data.error || 'Вход недоступен.');
+                    btn.disabled = false;
+                    return;
+                }
+                window.open(data.url, '_blank');
+                setStatus('Подтвердите вход в Telegram — нажмите «Запустить», затем вернитесь сюда.');
+                timer = setInterval(() => poll(data.token), 2000);
+                timeout = setTimeout(() => {
+                    stop();
+                    setStatus('Время ожидания вышло. Нажмите кнопку ещё раз.');
+                    btn.disabled = false;
+                }, 300000);
+            });
+        })();
         </script>
         {% else %}
         <div class="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg p-4 text-sm">
-            Виджет недоступен: не задана переменная окружения <code>TG_BOT_USERNAME</code>.
+            Вход недоступен: не задана переменная окружения <code>TG_BOT_USERNAME</code>.
         </div>
         {% endif %}
 
