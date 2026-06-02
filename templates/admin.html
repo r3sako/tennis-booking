@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Админ — Теннисный корт{% endblock %}
+{% block body %}
+<div class="max-w-3xl mx-auto px-4 py-6" data-admin-key="{{ admin_key }}">
+    <h1 class="text-2xl font-bold mb-6">🎾 Админ-панель</h1>
+
+    {% for d in dates %}
+    <div class="bg-white rounded-2xl shadow p-5 mb-4">
+        <div class="font-semibold mb-2">{{ d.weekday }}, {{ d.label }}</div>
+        {% if d.slots %}
+        <ul class="divide-y divide-slate-100">
+            {% for s in d.slots %}
+            <li class="py-2 flex items-center justify-between text-sm">
+                <span>
+                    <span class="font-medium">{{ s.tg_name }}</span>
+                    {% if s.tg_username %}<span class="text-slate-400">@{{ s.tg_username }}</span>{% endif %}
+                    <span class="text-slate-400">· {{ s.hour }}:00–{{ s.hour + 1 }}:00</span>
+                </span>
+                <button class="admin-cancel px-3 py-1 rounded bg-rose-100 text-rose-700 hover:bg-rose-200"
+                        data-id="{{ s.booking_id }}">Отменить</button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-slate-400 text-sm">Нет броней.</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+const adminKey = document.querySelector('[data-admin-key]').dataset.adminKey;
+document.querySelectorAll('.admin-cancel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        if (!confirm('Отменить эту бронь?')) return;
+        const id = btn.dataset.id;
+        const res = await fetch(`/api/cancel/${id}?admin_key=${encodeURIComponent(adminKey)}`, {
+            method: 'DELETE',
+            headers: { 'X-Admin-Key': adminKey },
+        });
+        if (res.ok) {
+            location.reload();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'Ошибка отмены');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,15 @@
+# Local Postgres for development only. Render provides its own managed DB.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: tennis
+      POSTGRES_PASSWORD: tennis
+      POSTGRES_DB: tennis
+    ports:
+      - "5433:5432"
+    volumes:
+      - tennis_pgdata:/var/lib/postgresql/data
+
+volumes:
+  tennis_pgdata:
