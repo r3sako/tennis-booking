@@ -1,4 +1,5 @@
 """FastAPI app: lifespan, routes, startup cleanup."""
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -26,14 +27,35 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("main")
 
 
+CLEANUP_INTERVAL_SECONDS = 6 * 3600  # run retention cleanup every 6 hours
+
+
+async def _run_cleanup(label: str) -> None:
+    async with SessionLocal() as session:
+        deleted = await bk.cleanup_old_bookings(session)
+    if deleted or label == "Startup":
+        logger.info("%s cleanup: removed %d past bookings", label, deleted)
+
+
+async def _periodic_cleanup() -> None:
+    """Drop past-date bookings on a timer, so retention works even when the
+    process runs for weeks without a restart (typical on a VPS)."""
+    while True:
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+        try:
+            await _run_cleanup("Periodic")
+        except Exception as exc:  # never let the loop die on a transient error
+            logger.warning("Periodic cleanup failed: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    # Data retention: drop everything before today (Moscow).
-    async with SessionLocal() as session:
-        deleted = await bk.cleanup_old_bookings(session)
-        logger.info("Startup cleanup: removed %d past bookings", deleted)
+    # Data retention: drop everything before today (Moscow), now and on a timer.
+    await _run_cleanup("Startup")
+    cleanup_task = asyncio.create_task(_periodic_cleanup())
     yield
+    cleanup_task.cancel()
     await close_bot()
 
 
