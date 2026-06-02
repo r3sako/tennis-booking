@@ -34,7 +34,6 @@ services:
       NOTIFY_CHAT_ID: ${NOTIFY_CHAT_ID}
       NOTIFY_NEW_BOOKING: ${NOTIFY_NEW_BOOKING}
       ALLOWED_CHAT_ID: ${ALLOWED_CHAT_ID}
-      SITE_URL: ${SITE_URL}
       PORT: "8000"
     depends_on:
       db:

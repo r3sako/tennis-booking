@@ -13,7 +13,6 @@ from config import (
     BOT_TOKEN,
     NOTIFY_CHAT_ID,
     NOTIFY_NEW_BOOKING,
-    SITE_URL,
     TG_BOT_USERNAME,
 )
 
@@ -159,11 +158,9 @@ async def run_login_bot() -> None:
             message.from_user.id, token, len(_login_tokens),
         )
         if not token:
-            link = f"\n\n{SITE_URL}" if SITE_URL else ""
             await message.answer(
-                "👋 Привет! Это бот для входа на сайт бронирования теннисного корта.\n\n"
-                "Писать сюда ничего не нужно — вход происходит автоматически. "
-                "Откройте сайт и нажмите кнопку «Войти через Telegram»." + link
+                "Это бот для авторизации на сайте бронирования теннисного корта.\n\n"
+                "Писать сюда ничего не нужно — вход выполняется автоматически с сайта."
             )
             return
         entry = _login_tokens.get(token)
