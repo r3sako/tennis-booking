@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("main")
 
 
-CLEANUP_INTERVAL_SECONDS = 6 * 3600  # run retention cleanup every 6 hours
+CLEANUP_INTERVAL_SECONDS = 24 * 3600  # run retention cleanup once a day
 
 
 async def _run_cleanup(label: str) -> None:
