@@ -33,6 +33,7 @@ services:
       TG_BOT_USERNAME: ${TG_BOT_USERNAME}
       NOTIFY_CHAT_ID: ${NOTIFY_CHAT_ID}
       NOTIFY_NEW_BOOKING: ${NOTIFY_NEW_BOOKING}
+      ALLOWED_CHAT_ID: ${ALLOWED_CHAT_ID}
       PORT: "8000"
     depends_on:
       db:

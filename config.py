@@ -33,6 +33,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change_me_random_string")
 ADMIN_KEY = os.getenv("ADMIN_KEY", "").strip()
 NOTIFY_CHAT_ID = os.getenv("NOTIFY_CHAT_ID", "").strip()
 NOTIFY_NEW_BOOKING = os.getenv("NOTIFY_NEW_BOOKING", "false").lower() == "true"
+# If set, only members of this Telegram chat may log in (residents' group).
+# The bot must be a member/admin of this chat. Empty = no restriction.
+ALLOWED_CHAT_ID = os.getenv("ALLOWED_CHAT_ID", "").strip()
 PORT = int(os.getenv("PORT", "8000"))
 # Set to false for local HTTP testing (cookie won't be sent over http otherwise).
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"

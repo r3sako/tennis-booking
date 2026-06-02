@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import bookings as bk
 from auth import create_session_token, get_current_user, verify_telegram_auth
-from bot import close_bot, notify_cancellation, notify_new_booking
+from bot import close_bot, is_chat_member, notify_cancellation, notify_new_booking
 from config import (
     ADMIN_KEY,
     BOOKING_WINDOW_DAYS,
@@ -84,14 +84,22 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
 
 
 @app.get("/login")
-async def login(request: Request):
+async def login(request: Request, error: str = ""):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/", status_code=302)
+    errors = {
+        "auth": "Проверка Telegram не пройдена. Попробуйте ещё раз.",
+        "forbidden": "Доступ только для жильцов дома — участников чата.",
+    }
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"request": request, "bot_username": TG_BOT_USERNAME},
+        {
+            "request": request,
+            "bot_username": TG_BOT_USERNAME,
+            "error": errors.get(error, ""),
+        },
     )
 
 
@@ -123,9 +131,11 @@ async def auth_telegram(
         data["photo_url"] = photo_url
 
     if not verify_telegram_auth(data):
-        return JSONResponse(
-            {"error": "Проверка Telegram не пройдена"}, status_code=403
-        )
+        return RedirectResponse(url="/login?error=auth", status_code=302)
+
+    # Restrict access to members of the residents' chat (if configured).
+    if not await is_chat_member(id):
+        return RedirectResponse(url="/login?error=forbidden", status_code=302)
 
     name = (first_name + " " + last_name).strip() or username or str(id)
     token = create_session_token(id, username or None, name)
