@@ -7,12 +7,6 @@
         <h1 class="text-2xl font-bold mb-2">Бронирование теннисного корта</h1>
         <p class="text-slate-500 mb-6">Войдите через Telegram, чтобы бронировать и отменять слоты.</p>
 
-        {% if error %}
-        <div class="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg p-3 text-sm mb-5">
-            {{ error }}
-        </div>
-        {% endif %}
-
         {% if bot_username %}
         <button id="tg-login"
             class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl

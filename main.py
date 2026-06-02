@@ -4,20 +4,19 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import bookings as bk
-from auth import create_session_token, get_current_user, verify_telegram_auth
+from auth import create_session_token, get_current_user
 from bot import (
     close_bot,
     consume_login_token,
     create_login_token,
     get_login_entry,
-    is_chat_member,
     login_url,
     notify_cancellation,
     notify_new_booking,
@@ -119,74 +118,20 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
 
 
 @app.get("/login")
-async def login(request: Request, error: str = ""):
+async def login(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/", status_code=302)
-    errors = {
-        "auth": "Проверка Telegram не пройдена. Попробуйте ещё раз.",
-        "forbidden": "Доступ только для жильцов дома — участников чата.",
-    }
     return templates.TemplateResponse(
         request,
         "login.html",
-        {
-            "request": request,
-            "bot_username": TG_BOT_USERNAME,
-            "error": errors.get(error, ""),
-        },
+        {"request": request, "bot_username": TG_BOT_USERNAME},
     )
 
 
 # --------------------------------------------------------------------------- #
 # Auth
 # --------------------------------------------------------------------------- #
-@app.post("/auth/telegram")
-async def auth_telegram(
-    id: int = Form(...),
-    first_name: str = Form(""),
-    last_name: str = Form(""),
-    username: str = Form(""),
-    photo_url: str = Form(""),
-    auth_date: int = Form(...),
-    hash: str = Form(...),
-):
-    data = {
-        "id": str(id),
-        "auth_date": str(auth_date),
-        "hash": hash,
-    }
-    if first_name:
-        data["first_name"] = first_name
-    if last_name:
-        data["last_name"] = last_name
-    if username:
-        data["username"] = username
-    if photo_url:
-        data["photo_url"] = photo_url
-
-    if not verify_telegram_auth(data):
-        return RedirectResponse(url="/login?error=auth", status_code=302)
-
-    # Restrict access to members of the residents' chat (if configured).
-    if not await is_chat_member(id):
-        return RedirectResponse(url="/login?error=forbidden", status_code=302)
-
-    name = (first_name + " " + last_name).strip() or username or str(id)
-    token = create_session_token(id, username or None, name)
-
-    response = RedirectResponse(url="/", status_code=302)
-    response.set_cookie(
-        key=COOKIE_NAME,
-        value=token,
-        httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="lax",
-        max_age=JWT_EXPIRE_DAYS * 86400,
-    )
-    return response
-
-
 @app.get("/auth/dev")
 async def auth_dev():
     """DEV-ONLY shortcut to obtain a session without Telegram.
