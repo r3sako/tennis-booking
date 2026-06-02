@@ -36,6 +36,8 @@ NOTIFY_NEW_BOOKING = os.getenv("NOTIFY_NEW_BOOKING", "false").lower() == "true"
 # If set, only members of this Telegram chat may log in (residents' group).
 # The bot must be a member/admin of this chat. Empty = no restriction.
 ALLOWED_CHAT_ID = os.getenv("ALLOWED_CHAT_ID", "").strip()
+# Public site URL, used in the bot's greeting message. Optional.
+SITE_URL = os.getenv("SITE_URL", "").strip()
 PORT = int(os.getenv("PORT", "8000"))
 # Set to false for local HTTP testing (cookie won't be sent over http otherwise).
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"
