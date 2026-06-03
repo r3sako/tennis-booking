@@ -30,6 +30,7 @@ from config import (
     COOKIE_SECURE,
     JWT_EXPIRE_DAYS,
     TG_BOT_USERNAME,
+    UNLIMITED_USER_IDS,
 )
 from database import SessionLocal, get_session, init_db
 
@@ -103,6 +104,7 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
         for i in range(BOOKING_WINDOW_DAYS)
     ]
     current = await bk.get_current_booking(session)
+    unlimited = bool(user and user["tg_user_id"] in UNLIMITED_USER_IDS)
 
     return templates.TemplateResponse(
         request,
@@ -113,6 +115,7 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
             "dates": dates,
             "today_iso": today.isoformat(),
             "current_booking": current,
+            "unlimited": unlimited,
         },
     )
 

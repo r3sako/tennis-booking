@@ -36,6 +36,23 @@ NOTIFY_NEW_BOOKING = os.getenv("NOTIFY_NEW_BOOKING", "false").lower() == "true"
 # If set, only members of this Telegram chat may log in (residents' group).
 # The bot must be a member/admin of this chat. Empty = no restriction.
 ALLOWED_CHAT_ID = os.getenv("ALLOWED_CHAT_ID", "").strip()
+
+
+def _parse_ids(raw: str) -> set[int]:
+    ids: set[int] = set()
+    for part in raw.replace(";", ",").split(","):
+        part = part.strip()
+        if part:
+            try:
+                ids.add(int(part))
+            except ValueError:
+                pass
+    return ids
+
+
+# Telegram IDs exempt from the "1 booking per day" limit (e.g. the trainer).
+# Comma-separated, e.g. "111111111,222222222".
+UNLIMITED_USER_IDS = _parse_ids(os.getenv("UNLIMITED_USER_IDS", ""))
 PORT = int(os.getenv("PORT", "8000"))
 # Set to false for local HTTP testing (cookie won't be sent over http otherwise).
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"

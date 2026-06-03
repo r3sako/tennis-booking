@@ -12,6 +12,7 @@ from config import (
     LAST_SLOT_HOUR,
     MOSCOW_TZ,
     OPEN_HOUR,
+    UNLIMITED_USER_IDS,
 )
 from database import Booking
 
@@ -172,8 +173,10 @@ async def create_booking(
     if is_past_slot(d, hour):
         raise BookingError("Этот слот уже прошёл")
 
-    # One active booking per user per day.
-    if await user_has_booking_on(session, tg_user_id, d):
+    # One active booking per user per day — except privileged users (trainer).
+    if tg_user_id not in UNLIMITED_USER_IDS and await user_has_booking_on(
+        session, tg_user_id, d
+    ):
         raise BookingError("Вы уже бронировали корт на этот день")
 
     # Slot must be free (active booking on same date+hour).
