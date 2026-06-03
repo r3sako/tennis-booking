@@ -66,4 +66,4 @@ BOOKING_WINDOW_DAYS = 14  # today + 13 days ahead
 
 COOKIE_NAME = "session"
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_DAYS = 90  # membership is re-checked on every booking anyway
+JWT_EXPIRE_DAYS = 30
