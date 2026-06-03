@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
+    BOOKING_OPEN_DATE,
     BOOKING_WINDOW_DAYS,
     LAST_SLOT_HOUR,
     MOSCOW_TZ,
@@ -47,12 +48,31 @@ def parse_date(value: str) -> date_cls:
         raise BookingError("Неверная дата")
 
 
-def is_within_window(d: date_cls) -> bool:
-    """True if date is today .. today+13 (14-day window)."""
+def window_start() -> date_cls:
+    """First bookable date. Normally today, but not before BOOKING_OPEN_DATE."""
     today = today_moscow()
-    if d < today:
-        return False
-    return d <= today + timedelta(days=BOOKING_WINDOW_DAYS - 1)
+    if BOOKING_OPEN_DATE and BOOKING_OPEN_DATE > today:
+        return BOOKING_OPEN_DATE
+    return today
+
+
+def window_end() -> date_cls:
+    """Last bookable date — 14 days ahead of today."""
+    return today_moscow() + timedelta(days=BOOKING_WINDOW_DAYS)
+
+
+def window_dates() -> list[date_cls]:
+    """All currently bookable dates, in order (empty if none yet)."""
+    start, end = window_start(), window_end()
+    span = (end - start).days
+    if span < 0:
+        return []
+    return [start + timedelta(days=i) for i in range(span + 1)]
+
+
+def is_within_window(d: date_cls) -> bool:
+    """True if the date is currently open for booking."""
+    return window_start() <= d <= window_end()
 
 
 def is_past_slot(d: date_cls, hour: int) -> bool:

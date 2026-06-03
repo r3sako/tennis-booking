@@ -4,7 +4,7 @@
 <div class="max-w-4xl mx-auto px-4 py-6"
      data-user-id="{% if user %}{{ user.tg_user_id }}{% endif %}"
      data-unlimited="{{ 'true' if unlimited else '' }}"
-     data-today="{{ today_iso }}"
+     data-start="{{ start_iso }}"
      id="app">
 
     <!-- Header -->
@@ -29,6 +29,13 @@
         </div>
     </header>
 
+    {% if ramp %}
+    <!-- Cutover notice: site booking opens on open_date -->
+    <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-5 mb-4 text-sm">
+        📅 Запись на сайте открывается с <b>{{ open_date }}</b>. Даты до этого ведутся в Google-календаре.
+        Каждый день открывается следующая дата.
+    </div>
+    {% else %}
     <!-- Now on court -->
     <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <div class="text-xs uppercase tracking-wide text-slate-400 mb-1">Сейчас на корте</div>
@@ -42,6 +49,7 @@
         <div class="text-lg font-semibold text-emerald-600">Корт свободен</div>
         {% endif %}
     </div>
+    {% endif %}
 
     <!-- Date strip -->
     <div class="mb-4">
@@ -50,7 +58,7 @@
             {% for d in dates %}
             <button data-date="{{ d.iso }}"
                 class="date-btn shrink-0 w-16 py-2 rounded-xl border text-center transition
-                       {% if d.is_today %}border-emerald-500 bg-emerald-50{% else %}border-slate-200 bg-white{% endif %}">
+                       {% if d.selected %}border-emerald-500 bg-emerald-50{% else %}border-slate-200 bg-white{% endif %}">
                 <div class="text-xs text-slate-400">{{ d.weekday }}</div>
                 <div class="text-lg font-bold">{{ d.day }}</div>
             </button>

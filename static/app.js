@@ -4,7 +4,7 @@
   const loggedIn = app.dataset.userId !== "";
   const userId = Number(app.dataset.userId);
   const unlimited = app.dataset.unlimited === "true";
-  const todayIso = app.dataset.today;
+  const startIso = app.dataset.start;
 
   const grid = document.getElementById("slot-grid");
   const slotsTitle = document.getElementById("slots-title");
@@ -15,7 +15,7 @@
   const modalCancel = document.getElementById("modal-cancel");
   const toast = document.getElementById("toast");
 
-  let selectedDate = todayIso;
+  let selectedDate = startIso;
   let pending = null; // {date, hour}
 
   function showToast(msg, ok = true) {
@@ -182,5 +182,5 @@
   });
 
   // Initial load: today.
-  loadSlots(todayIso);
+  loadSlots(startIso);
 })();
