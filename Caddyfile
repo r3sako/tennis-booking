@@ -1,5 +1,11 @@
-# Caddy auto-provisions a free Let's Encrypt TLS certificate for $DOMAIN
-# and reverse-proxies HTTPS traffic to the app container on port 8000.
+# Caddy auto-provisions free Let's Encrypt TLS certificates and reverse-proxies
+# HTTPS traffic to the app container on port 8000.
 {$DOMAIN} {
 	reverse_proxy app:8000
+}
+
+# Redirect the www subdomain to the canonical (non-www) domain.
+# Caddy also gets a certificate for www, so visitors who type "www." don't fail.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
 }
