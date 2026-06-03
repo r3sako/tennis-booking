@@ -34,20 +34,32 @@
     return slots.some((s) => s.status === "booked" && s.tg_user_id === userId);
   }
 
+  function showLoadError(iso) {
+    grid.innerHTML =
+      '<div class="col-span-full text-center text-rose-500 py-8">' +
+      "Не удалось загрузить слоты. " +
+      '<button id="retry-slots" class="underline font-medium">Повторить</button>' +
+      "</div>";
+    const r = document.getElementById("retry-slots");
+    if (r) r.addEventListener("click", () => loadSlots(iso));
+  }
+
   async function loadSlots(iso) {
     selectedDate = iso;
     slotsTitle.textContent = `Слоты на ${fmtDateLabel(iso)}`;
     grid.innerHTML =
       '<div class="col-span-full text-center text-slate-400 py-8">Загрузка…</div>';
 
-    const res = await fetch(`/api/slots?date=${iso}`);
-    if (!res.ok) {
-      grid.innerHTML =
-        '<div class="col-span-full text-center text-rose-500 py-8">Ошибка загрузки</div>';
-      return;
+    try {
+      const res = await fetch(`/api/slots?date=${iso}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("bad status " + res.status);
+      const data = await res.json();
+      // Ignore stale responses if the user switched dates meanwhile.
+      if (selectedDate !== iso) return;
+      renderSlots(data.slots);
+    } catch (e) {
+      showLoadError(iso);
     }
-    const data = await res.json();
-    renderSlots(data.slots);
   }
 
   function renderSlots(slots) {
