@@ -17,6 +17,7 @@ from bot import (
     consume_login_token,
     create_login_token,
     get_login_entry,
+    is_chat_member,
     login_url,
     notify_cancellation,
     notify_new_booking,
@@ -236,6 +237,16 @@ async def api_book(
     user = get_current_user(request)
     if not user:
         return JSONResponse({"error": "Необходима авторизация"}, status_code=401)
+
+    # Re-verify chat membership on every booking so a resident who was removed
+    # from the chat loses access immediately (their session is also cleared).
+    if not await is_chat_member(user["tg_user_id"]):
+        response = JSONResponse(
+            {"error": "Доступ только для жильцов дома — участников чата."},
+            status_code=403,
+        )
+        response.delete_cookie(COOKIE_NAME)
+        return response
 
     body = await request.json()
     try:

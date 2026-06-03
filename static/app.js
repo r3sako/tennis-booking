@@ -145,6 +145,10 @@
     if (res.ok) {
       showToast("Бронь создана!");
       loadSlots(selectedDate);
+    } else if (res.status === 403) {
+      // Access revoked (e.g. removed from chat) — session cleared, re-login.
+      showToast(data.error || "Доступ закрыт", false);
+      setTimeout(() => (window.location.href = "/login"), 1800);
     } else {
       showToast(data.error || "Ошибка бронирования", false);
     }
