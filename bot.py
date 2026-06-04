@@ -13,7 +13,7 @@ from config import (
     BOT_TOKEN,
     NOTIFY_CHAT_ID,
     NOTIFY_NEW_BOOKING,
-    TG_BOT_USERNAME,
+    SITE_URL,
 )
 
 logger = logging.getLogger("bot")
@@ -21,10 +21,11 @@ logger = logging.getLogger("bot")
 _bot = None
 
 # --------------------------------------------------------------------------- #
-# Deep-link login token store (in-memory; single-process app).
-#   token -> {"status": "pending"|"ok"|"forbidden", "user": {...}|None, "ts": float}
+# Login token store (in-memory; single-process app). The bot creates a token
+# bound to a verified user and sends back a "log in" link; the site consumes it.
+#   token -> {"user": {...}, "ts": float}
 # --------------------------------------------------------------------------- #
-_LOGIN_TTL = 300  # seconds a login link stays valid
+_LOGIN_TTL = 600  # seconds a login link stays valid
 _login_tokens: dict[str, dict] = {}
 
 
@@ -34,24 +35,19 @@ def _prune_tokens() -> None:
         _login_tokens.pop(tok, None)
 
 
-def create_login_token() -> str:
+def create_login_token(user: dict) -> str:
+    """Store a verified user and return a one-time token for the login link."""
     _prune_tokens()
-    token = secrets.token_urlsafe(16)
-    _login_tokens[token] = {"status": "pending", "user": None, "ts": time.time()}
+    token = secrets.token_urlsafe(24)
+    _login_tokens[token] = {"user": user, "ts": time.time()}
     return token
 
 
-def login_url(token: str) -> str:
-    return f"https://t.me/{TG_BOT_USERNAME}?start={token}"
-
-
-def get_login_entry(token: str) -> dict | None:
+def consume_login_token(token: str) -> dict | None:
+    """Return the user for a valid token (and invalidate it), else None."""
     _prune_tokens()
-    return _login_tokens.get(token)
-
-
-def consume_login_token(token: str) -> None:
-    _login_tokens.pop(token, None)
+    entry = _login_tokens.pop(token, None)
+    return entry["user"] if entry else None
 
 
 def _get_bot():
@@ -134,57 +130,53 @@ async def notify_new_booking(d, hour: int, username: str | None, name: str) -> N
 
 
 async def run_login_bot() -> None:
-    """Listen for /start <token> deep links and complete website logins.
+    """Listen for /start and send the user a one-time "log in" link.
 
-    The user opens https://t.me/<bot>?start=<token>, presses Start, and the
-    bot binds their verified Telegram identity to that login token. The
-    website (polling /auth/tg/poll) then receives a session. No-op if the
-    bot is disabled.
+    The user opens the bot (from the site button or by username) and presses
+    Start. The bot verifies chat membership, then replies with an inline button
+    linking to {SITE_URL}/auth/tg/enter?token=..., which logs them in when
+    tapped. No polling needed — robust inside the Telegram in-app browser.
+    No-op if the bot is disabled.
     """
     bot = _get_bot()
     if bot is None:
-        logger.info("BOT_TOKEN not set — deep-link login disabled")
+        logger.info("BOT_TOKEN not set — login bot disabled")
         return
 
     from aiogram import Dispatcher
     from aiogram.filters import CommandStart
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
     dp = Dispatcher()
 
     async def on_start(message, command) -> None:
-        token = (command.args or "").strip()
-        logger.info(
-            "Login /start from user=%s token=%r known_tokens=%d",
-            message.from_user.id, token, len(_login_tokens),
-        )
-        if not token:
-            await message.answer(
-                "Это бот для авторизации на сайте бронирования теннисного корта.\n\n"
-                "Писать сюда ничего не нужно — вход выполняется автоматически с сайта."
-            )
-            return
-        entry = _login_tokens.get(token)
-        if not entry or entry["status"] != "pending":
-            await message.answer(
-                "Ссылка для входа устарела. Обновите страницу входа и попробуйте снова."
-            )
+        u = message.from_user
+        logger.info("Login /start from user=%s", u.id)
+
+        if not await is_chat_member(u.id):
+            await message.answer("Доступ только для жильцов дома — участников чата.")
             return
 
-        u = message.from_user
-        if not await is_chat_member(u.id):
-            entry["status"] = "forbidden"
-            await message.answer("Доступ только для жильцов дома — участников чата.")
+        if not SITE_URL:
+            await message.answer(
+                "Сайт не настроен (не задан SITE_URL). Обратитесь к администратору."
+            )
             return
 
         name = ((u.first_name or "") + " " + (u.last_name or "")).strip()
         name = name or (u.username or str(u.id))
-        entry["user"] = {
-            "tg_user_id": u.id,
-            "tg_username": u.username,
-            "tg_name": name,
-        }
-        entry["status"] = "ok"
-        await message.answer("✅ Готово! Вернитесь на сайт — вы уже вошли.")
+        token = create_login_token(
+            {"tg_user_id": u.id, "tg_username": u.username, "tg_name": name}
+        )
+        url = f"{SITE_URL}/auth/tg/enter?token={token}"
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🎾 Войти на сайт", url=url)]]
+        )
+        await message.answer(
+            "Нажмите кнопку ниже, чтобы войти на сайт ⤵️\n"
+            "Ссылка действует 10 минут.",
+            reply_markup=kb,
+        )
 
     dp.message.register(on_start, CommandStart())
 
