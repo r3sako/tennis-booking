@@ -1,11 +1,16 @@
 # Caddy auto-provisions free Let's Encrypt TLS certificates and reverse-proxies
 # HTTPS traffic to the app container on port 8000.
-{$DOMAIN} {
+#
+# Both domains are served by the same app. The .online domain is used because
+# some VPNs route .ru domains outside the tunnel (split tunnel), which breaks
+# access to the foreign server; .online always goes through the tunnel.
+
+# Apex domains -> app
+tennis-khoroshevski.ru, tennis-khoroshevski.online {
 	reverse_proxy app:8000
 }
 
-# Redirect the www subdomain to the canonical (non-www) domain.
-# Caddy also gets a certificate for www, so visitors who type "www." don't fail.
-www.{$DOMAIN} {
-	redir https://{$DOMAIN}{uri} permanent
+# www -> permanent redirect to the matching apex (Caddy also gets www certs)
+www.tennis-khoroshevski.ru, www.tennis-khoroshevski.online {
+	redir https://{http.request.host.labels.1}.{http.request.host.labels.0}{uri} permanent
 }
