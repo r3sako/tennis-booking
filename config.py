@@ -30,9 +30,6 @@ def _normalize_db_url(url: str) -> str:
 DATABASE_URL = _normalize_db_url(os.getenv("DATABASE_URL", ""))
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 TG_BOT_USERNAME = os.getenv("TG_BOT_USERNAME", "").strip()
-# Public base URL of the site (the reliable domain), used by the bot to build
-# the "log in" link it sends back. e.g. https://tennis-khoroshevski.online
-SITE_URL = os.getenv("SITE_URL", "").strip().rstrip("/")
 SECRET_KEY = os.getenv("SECRET_KEY", "change_me_random_string")
 ADMIN_KEY = os.getenv("ADMIN_KEY", "").strip()
 NOTIFY_CHAT_ID = os.getenv("NOTIFY_CHAT_ID", "").strip()

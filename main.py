@@ -15,6 +15,9 @@ from auth import create_session_token, get_current_user
 from bot import (
     close_bot,
     consume_login_token,
+    create_login_token,
+    get_login_entry,
+    login_url,
     notify_cancellation,
     notify_new_booking,
     run_login_bot,
@@ -22,6 +25,7 @@ from bot import (
 from config import (
     ADMIN_KEY,
     BOOKING_OPEN_DATE,
+    BOT_TOKEN,
     COOKIE_NAME,
     COOKIE_SECURE,
     JWT_EXPIRE_DAYS,
@@ -167,28 +171,48 @@ async def logout():
 
 
 # --------------------------------------------------------------------------- #
-# Login via the bot: the bot sends a link to this endpoint, which logs the user
-# in. Robust on mobile / inside the Telegram in-app browser (no polling).
+# Deep-link login via the bot
 # --------------------------------------------------------------------------- #
-@app.get("/auth/tg/enter")
-async def tg_login_enter(token: str):
-    user = consume_login_token(token)
-    if not user:
-        # Expired or already used — send them back to start over.
-        return RedirectResponse(url="/login", status_code=302)
-    jwt_token = create_session_token(
-        user["tg_user_id"], user["tg_username"], user["tg_name"]
-    )
-    response = RedirectResponse(url="/", status_code=302)
-    response.set_cookie(
-        key=COOKIE_NAME,
-        value=jwt_token,
-        httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="lax",
-        max_age=JWT_EXPIRE_DAYS * 86400,
-    )
-    return response
+@app.post("/auth/tg/start")
+async def tg_login_start():
+    """Issue a one-time login token and the t.me deep link to open the bot."""
+    if not BOT_TOKEN or not TG_BOT_USERNAME:
+        return JSONResponse(
+            {"error": "Вход через Telegram не настроен"}, status_code=503
+        )
+    token = create_login_token()
+    return {"token": token, "url": login_url(token)}
+
+
+@app.get("/auth/tg/poll")
+async def tg_login_poll(token: str):
+    """Frontend polls this until the user confirms in Telegram.
+
+    Returns: pending | ok (sets session cookie) | forbidden | expired.
+    """
+    entry = get_login_entry(token)
+    if entry is None:
+        return {"status": "expired"}
+    if entry["status"] == "forbidden":
+        consume_login_token(token)
+        return {"status": "forbidden"}
+    if entry["status"] == "ok":
+        u = entry["user"]
+        consume_login_token(token)
+        jwt_token = create_session_token(
+            u["tg_user_id"], u["tg_username"], u["tg_name"]
+        )
+        response = JSONResponse({"status": "ok"})
+        response.set_cookie(
+            key=COOKIE_NAME,
+            value=jwt_token,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite="lax",
+            max_age=JWT_EXPIRE_DAYS * 86400,
+        )
+        return response
+    return {"status": "pending"}
 
 
 # --------------------------------------------------------------------------- #
