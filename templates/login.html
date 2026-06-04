@@ -18,11 +18,17 @@
             Войти через Telegram
         </button>
         <p id="tg-status" class="text-sm text-slate-500 mt-4 hidden"></p>
+        <a id="tg-link" href="#" target="_blank" rel="noopener"
+           class="hidden inline-block mt-3 px-4 py-2 rounded-lg bg-sky-100 text-sky-700
+                  underline text-sm font-medium">
+            Не открылся Telegram? Нажмите здесь
+        </a>
 
         <script>
         (function () {
             const btn = document.getElementById('tg-login');
             const status = document.getElementById('tg-status');
+            const link = document.getElementById('tg-link');
             let timer = null, timeout = null;
 
             function setStatus(text) {
@@ -70,8 +76,12 @@
                     setStatus(data.error || 'Вход недоступен.');
                     return;
                 }
+                // Show the manual link (carries the token) for browsers that
+                // block the automatic window.open.
+                link.href = data.url;
+                link.classList.remove('hidden');
                 window.open(data.url, '_blank');
-                setStatus('Подтвердите вход в Telegram — нажмите «Запустить», затем вернитесь сюда. Не открылось? Нажмите кнопку ещё раз.');
+                setStatus('Подтвердите вход в Telegram — нажмите «Запустить», затем вернитесь сюда.');
                 timer = setInterval(() => poll(data.token), 2000);
                 timeout = setTimeout(() => {
                     stop();
