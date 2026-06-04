@@ -47,16 +47,16 @@
                 } else if (data.status === 'forbidden') {
                     stop();
                     setStatus('Доступ только для жильцов дома — участников чата.');
-                    btn.disabled = false;
                 } else if (data.status === 'expired') {
                     stop();
                     setStatus('Ссылка устарела. Нажмите кнопку ещё раз.');
-                    btn.disabled = false;
                 }
             }
 
-            btn.addEventListener('click', async () => {
-                btn.disabled = true;
+            // The button stays clickable: tapping again restarts the flow
+            // (handy if Telegram didn't open the first time).
+            async function startLogin() {
+                stop();
                 setStatus('Открываем Telegram…');
                 let data;
                 try {
@@ -64,23 +64,22 @@
                     data = await r.json();
                 } catch (e) {
                     setStatus('Ошибка соединения. Попробуйте ещё раз.');
-                    btn.disabled = false;
                     return;
                 }
                 if (!data.url) {
                     setStatus(data.error || 'Вход недоступен.');
-                    btn.disabled = false;
                     return;
                 }
                 window.open(data.url, '_blank');
-                setStatus('Подтвердите вход в Telegram — нажмите «Запустить», затем вернитесь сюда.');
+                setStatus('Подтвердите вход в Telegram — нажмите «Запустить», затем вернитесь сюда. Не открылось? Нажмите кнопку ещё раз.');
                 timer = setInterval(() => poll(data.token), 2000);
                 timeout = setTimeout(() => {
                     stop();
                     setStatus('Время ожидания вышло. Нажмите кнопку ещё раз.');
-                    btn.disabled = false;
                 }, 300000);
-            });
+            }
+
+            btn.addEventListener('click', startLogin);
         })();
         </script>
         {% else %}
