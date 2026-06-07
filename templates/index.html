@@ -29,13 +29,6 @@
         </div>
     </header>
 
-    {% if ramp %}
-    <!-- Cutover notice: site booking opens on open_date -->
-    <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-5 mb-4 text-sm">
-        📅 Слоты до <b>{{ open_date }}</b> — по записи в Google-календаре.
-        Бронирование на сайте уже открыто — запись на 2 недели вперёд (ближайшая дата — {{ open_date }}).
-    </div>
-    {% else %}
     <!-- Now on court -->
     <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <div class="text-xs uppercase tracking-wide text-slate-400 mb-1">Сейчас на корте</div>
@@ -49,9 +42,7 @@
         <div class="text-lg font-semibold text-emerald-600">Корт свободен</div>
         {% endif %}
     </div>
-    {% endif %}
 
-    {% if has_dates %}
     <!-- Date strip -->
     <div class="mb-4">
         <div class="text-sm font-semibold mb-2">Выберите день</div>
@@ -81,11 +72,6 @@
             <div class="col-span-full text-center text-slate-400 py-8">Загрузка…</div>
         </div>
     </div>
-    {% else %}
-    <div class="bg-white rounded-2xl shadow p-6 text-center text-slate-500">
-        Ближайшая доступная для записи дата — {{ open_date }}. Слоты до {{ open_date }} — в Google-календаре.
-    </div>
-    {% endif %}
 </div>
 
 <!-- Booking modal -->

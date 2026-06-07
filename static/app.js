@@ -6,9 +6,6 @@
   const unlimited = app.dataset.unlimited === "true";
   const startIso = app.dataset.start;
 
-  // Nothing open yet (cutover not reached) — page shows only the banner.
-  if (!startIso) return;
-
   const grid = document.getElementById("slot-grid");
   const slotsTitle = document.getElementById("slots-title");
   const dateStrip = document.getElementById("date-strip");
