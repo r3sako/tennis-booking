@@ -33,7 +33,7 @@
     <!-- Cutover notice: site booking opens on open_date -->
     <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-5 mb-4 text-sm">
         📅 Слоты до <b>{{ open_date }}</b> — по записи в Google-календаре.
-        На сайте бронирование открыто с <b>{{ open_date }}</b>; новые даты открываются каждый день.
+        Бронирование на сайте уже открыто — запись на 2 недели вперёд (ближайшая дата — {{ open_date }}).
     </div>
     {% else %}
     <!-- Now on court -->
@@ -83,7 +83,7 @@
     </div>
     {% else %}
     <div class="bg-white rounded-2xl shadow p-6 text-center text-slate-500">
-        Бронирование на сайте пока закрыто. Откроется {{ open_date }}.
+        Ближайшая доступная для записи дата — {{ open_date }}. Слоты до {{ open_date }} — в Google-календаре.
     </div>
     {% endif %}
 </div>
