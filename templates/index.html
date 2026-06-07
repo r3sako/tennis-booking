@@ -32,8 +32,8 @@
     {% if ramp %}
     <!-- Cutover notice: site booking opens on open_date -->
     <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-5 mb-4 text-sm">
-        📅 Запись на сайте открывается с <b>{{ open_date }}</b>. Даты до этого ведутся в Google-календаре.
-        Каждый день открывается следующая дата.
+        📅 Слоты до <b>{{ open_date }}</b> — по записи в Google-календаре.
+        На сайте бронирование открыто с <b>{{ open_date }}</b>; новые даты открываются каждый день.
     </div>
     {% else %}
     <!-- Now on court -->
@@ -51,6 +51,7 @@
     </div>
     {% endif %}
 
+    {% if has_dates %}
     <!-- Date strip -->
     <div class="mb-4">
         <div class="text-sm font-semibold mb-2">Выберите день</div>
@@ -80,6 +81,11 @@
             <div class="col-span-full text-center text-slate-400 py-8">Загрузка…</div>
         </div>
     </div>
+    {% else %}
+    <div class="bg-white rounded-2xl shadow p-6 text-center text-slate-500">
+        Бронирование на сайте пока закрыто. Откроется {{ open_date }}.
+    </div>
+    {% endif %}
 </div>
 
 <!-- Booking modal -->

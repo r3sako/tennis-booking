@@ -95,16 +95,16 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
 
     today = bk.today_moscow()
     win_dates = bk.window_dates()
-    start = bk.window_start()
     dates = [
         {
             "iso": d.isoformat(),
             "day": d.day,
             "weekday": _ru_weekday(d),
-            "selected": d == start,
+            "selected": i == 0,
         }
-        for d in win_dates
+        for i, d in enumerate(win_dates)
     ]
+    start_iso = win_dates[0].isoformat() if win_dates else ""
     # During the cutover ramp (before BOOKING_OPEN_DATE) the site isn't the
     # source of truth for the current day, so skip the "now on court" card.
     ramp = bool(BOOKING_OPEN_DATE and today < BOOKING_OPEN_DATE)
@@ -118,7 +118,8 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
             "request": request,
             "user": user,
             "dates": dates,
-            "start_iso": start.isoformat(),
+            "has_dates": bool(win_dates),
+            "start_iso": start_iso,
             "current_booking": current,
             "unlimited": unlimited,
             "ramp": ramp,
