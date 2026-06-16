@@ -60,7 +60,7 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"
 
 # Business constants
 MOSCOW_TZ = "Europe/Moscow"
-OPEN_HOUR = 7          # first slot starts at 07:00
+OPEN_HOUR = 8          # first slot starts at 08:00
 CLOSE_HOUR = 22        # court closes at 22:00
 LAST_SLOT_HOUR = 21    # last bookable slot starts at 21:00
 BOOKING_WINDOW_DAYS = 14  # how many days ahead booking is open (today + 14)

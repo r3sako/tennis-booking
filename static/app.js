@@ -33,6 +33,13 @@
     return `${d}.${m}.${y}`;
   }
 
+  // Escape user-controlled text before inserting into HTML.
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
   function userBookedThisDay(slots) {
     return slots.some((s) => s.status === "booked" && s.tg_user_id === userId);
   }
@@ -86,12 +93,14 @@
           <button class="cancel-btn text-xs px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
                   data-id="${s.booking_id}">Отменить</button>`;
       } else if (s.status === "booked") {
-        // Booked by other → red/gray, not clickable.
-        const who = s.tg_name || (s.tg_username ? "@" + s.tg_username : "Занято");
+        // Booked by other → red/gray, not clickable. Show name + @username.
+        const name = esc(s.tg_name || "Занято");
+        const uname = s.tg_username ? "@" + esc(s.tg_username) : "";
         cell.className = `${base} border-rose-200 bg-rose-50 text-rose-700`;
         cell.innerHTML = `
           <div class="font-bold">${label}</div>
-          <div class="text-xs truncate" title="${who}">${who}</div>`;
+          <div class="text-xs truncate" title="${name}">${name}</div>
+          ${uname ? `<div class="text-[11px] text-rose-400 truncate" title="${uname}">${uname}</div>` : ""}`;
       } else if (s.past) {
         // Past free slot → muted.
         cell.className = `${base} border-slate-200 bg-slate-100 text-slate-400`;

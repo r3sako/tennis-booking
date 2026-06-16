@@ -37,7 +37,7 @@ def today_moscow() -> date_cls:
 
 
 def all_hours() -> list[int]:
-    """The 15 bookable slot start hours: 07..21."""
+    """The bookable slot start hours: 08..21 (14 slots)."""
     return list(range(OPEN_HOUR, LAST_SLOT_HOUR + 1))
 
 
