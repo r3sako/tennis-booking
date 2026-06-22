@@ -60,10 +60,14 @@ def is_within_window(d: date_cls) -> bool:
 
 
 def is_past_slot(d: date_cls, hour: int) -> bool:
-    """True if the slot start time is already in the past (Moscow time)."""
+    """True once the slot has ended, i.e. its hour is over (Moscow time).
+
+    The 08:00 slot becomes "past" at 09:00, not at 08:00 — so it stays
+    bookable/active while it's running and greys out when it finishes.
+    """
     now = now_moscow()
-    slot_start = TZ.localize(datetime(d.year, d.month, d.day, hour, 0, 0))
-    return slot_start <= now
+    slot_end = TZ.localize(datetime(d.year, d.month, d.day, hour, 0, 0)) + timedelta(hours=1)
+    return slot_end <= now
 
 
 async def cleanup_old_bookings(session: AsyncSession) -> int:

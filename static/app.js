@@ -83,8 +83,18 @@
       const base =
         "rounded-xl p-2 text-center text-sm border select-none transition";
 
-      if (s.status === "booked" && s.tg_user_id === userId) {
-        // Own booking → blue, cancellable.
+      const name = esc(s.tg_name || "Занято");
+      const uname = s.tg_username ? "@" + esc(s.tg_username) : "";
+
+      if (s.status === "booked" && s.past) {
+        // Finished booking → grey, but keep name + @username.
+        cell.className = `${base} border-slate-200 bg-slate-100 text-slate-400`;
+        cell.innerHTML = `
+          <div class="font-bold">${label}</div>
+          <div class="text-xs truncate" title="${name}">${name}</div>
+          ${uname ? `<div class="text-[11px] truncate" title="${uname}">${uname}</div>` : ""}`;
+      } else if (s.status === "booked" && s.tg_user_id === userId) {
+        // Own active booking → blue, cancellable.
         cell.className = `${base} border-blue-300 bg-blue-50`;
         cell.innerHTML = `
           <div class="font-bold">${label}</div>
@@ -92,20 +102,16 @@
           <button class="cancel-btn text-xs px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
                   data-id="${s.booking_id}">Отменить</button>`;
       } else if (s.status === "booked") {
-        // Booked by other → red/gray, not clickable. Show name + @username.
-        const name = esc(s.tg_name || "Занято");
-        const uname = s.tg_username ? "@" + esc(s.tg_username) : "";
+        // Booked by other (active) → red, not clickable. Show name + @username.
         cell.className = `${base} border-rose-200 bg-rose-50 text-rose-700`;
         cell.innerHTML = `
           <div class="font-bold">${label}</div>
           <div class="text-xs truncate" title="${name}">${name}</div>
           ${uname ? `<div class="text-[11px] text-rose-400 truncate" title="${uname}">${uname}</div>` : ""}`;
       } else if (s.past) {
-        // Past free slot → muted.
+        // Past free slot → muted, no label.
         cell.className = `${base} border-slate-200 bg-slate-100 text-slate-400`;
-        cell.innerHTML = `
-          <div class="font-bold">${label}</div>
-          <div class="text-xs">прошёл</div>`;
+        cell.innerHTML = `<div class="font-bold">${label}</div>`;
       } else if (alreadyBooked) {
         // Free but user already has a booking today → green w/ tooltip, not clickable.
         cell.className = `${base} border-emerald-200 bg-emerald-50 text-emerald-700 cursor-not-allowed`;
@@ -207,9 +213,16 @@
   // Initial load.
   loadSlots(startIso);
 
-  // Refresh the current day's slots every minute so "прошёл" appears on time
-  // and other people's bookings/cancellations show up without a manual reload.
-  setInterval(() => {
+  // Refresh the current day's slots at the top of every hour, so finished
+  // slots grey out right at :00 (e.g. the 08:00 slot greys at 09:00).
+  function refreshSilently() {
     if (modal.classList.contains("hidden")) loadSlots(selectedDate, true);
-  }, 60000);
+  }
+  const now = new Date();
+  const msToNextHour =
+    (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  setTimeout(() => {
+    refreshSilently();
+    setInterval(refreshSilently, 3600000);
+  }, msToNextHour);
 })();
