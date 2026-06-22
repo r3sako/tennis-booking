@@ -75,6 +75,13 @@ app = FastAPI(title="Tennis Court Booking", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# Cache-busting tag for app.js — changes whenever the file does (each deploy),
+# so browsers fetch the new version instead of serving a stale cached one.
+try:
+    ASSET_VERSION = str(int(os.path.getmtime("static/app.js")))
+except OSError:
+    ASSET_VERSION = "1"
+
 
 # --------------------------------------------------------------------------- #
 # Health
@@ -115,6 +122,7 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
             "start_iso": win_dates[0].isoformat(),
             "current_booking": current,
             "unlimited": unlimited,
+            "asset_version": ASSET_VERSION,
         },
     )
 
