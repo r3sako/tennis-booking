@@ -24,7 +24,6 @@ from bot import (
 )
 from config import (
     ADMIN_KEY,
-    BOOKING_OPEN_DATE,
     BOT_TOKEN,
     COOKIE_NAME,
     COOKIE_SECURE,
@@ -93,7 +92,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
     # Public page: schedule is viewable without login; booking requires auth.
     user = get_current_user(request)
 
-    today = bk.today_moscow()
     win_dates = bk.window_dates()
     dates = [
         {
@@ -104,11 +102,7 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
         }
         for i, d in enumerate(win_dates)
     ]
-    start_iso = win_dates[0].isoformat() if win_dates else ""
-    # During the cutover ramp (before BOOKING_OPEN_DATE) the site isn't the
-    # source of truth for the current day, so skip the "now on court" card.
-    ramp = bool(BOOKING_OPEN_DATE and today < BOOKING_OPEN_DATE)
-    current = None if ramp else await bk.get_current_booking(session)
+    current = await bk.get_current_booking(session)
     unlimited = bool(user and user["tg_user_id"] in UNLIMITED_USER_IDS)
 
     return templates.TemplateResponse(
@@ -118,12 +112,9 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
             "request": request,
             "user": user,
             "dates": dates,
-            "has_dates": bool(win_dates),
-            "start_iso": start_iso,
+            "start_iso": win_dates[0].isoformat(),
             "current_booking": current,
             "unlimited": unlimited,
-            "ramp": ramp,
-            "open_date": BOOKING_OPEN_DATE.strftime("%d.%m.%Y") if BOOKING_OPEN_DATE else "",
         },
     )
 

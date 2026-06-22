@@ -1,6 +1,5 @@
 """Centralized configuration loaded from environment variables."""
 import os
-from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -64,17 +63,6 @@ OPEN_HOUR = 8          # first slot starts at 08:00
 CLOSE_HOUR = 22        # court closes at 22:00
 LAST_SLOT_HOUR = 21    # last bookable slot starts at 21:00
 BOOKING_WINDOW_DAYS = 14  # how many days ahead booking is open (today + 14)
-
-# Optional cutover date: before it, only dates >= this are bookable, and they
-# "unlock" one day at a time as the 14-day window rolls forward. Empty = no floor
-# (normal rolling window from today). Format: YYYY-MM-DD.
-_open_raw = os.getenv("BOOKING_OPEN_DATE", "").strip()
-try:
-    BOOKING_OPEN_DATE = (
-        datetime.strptime(_open_raw, "%Y-%m-%d").date() if _open_raw else None
-    )
-except ValueError:
-    BOOKING_OPEN_DATE = None
 
 COOKIE_NAME = "session"
 JWT_ALGORITHM = "HS256"

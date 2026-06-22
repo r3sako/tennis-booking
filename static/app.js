@@ -6,9 +6,6 @@
   const unlimited = app.dataset.unlimited === "true";
   const startIso = app.dataset.start;
 
-  // Nothing open yet (cutover not reached) — page shows only the banner.
-  if (!startIso) return;
-
   const grid = document.getElementById("slot-grid");
   const slotsTitle = document.getElementById("slots-title");
   const dateStrip = document.getElementById("date-strip");
@@ -54,11 +51,13 @@
     if (r) r.addEventListener("click", () => loadSlots(iso));
   }
 
-  async function loadSlots(iso) {
+  async function loadSlots(iso, silent = false) {
     selectedDate = iso;
     slotsTitle.textContent = `Слоты на ${fmtDateLabel(iso)}`;
-    grid.innerHTML =
-      '<div class="col-span-full text-center text-slate-400 py-8">Загрузка…</div>';
+    if (!silent) {
+      grid.innerHTML =
+        '<div class="col-span-full text-center text-slate-400 py-8">Загрузка…</div>';
+    }
 
     try {
       const res = await fetch(`/api/slots?date=${iso}`, { cache: "no-store" });
@@ -68,7 +67,7 @@
       if (selectedDate !== iso) return;
       renderSlots(data.slots);
     } catch (e) {
-      showLoadError(iso);
+      if (!silent) showLoadError(iso);
     }
   }
 
@@ -205,6 +204,12 @@
     if (e.target === modal) closeModal();
   });
 
-  // Initial load: today.
+  // Initial load.
   loadSlots(startIso);
+
+  // Refresh the current day's slots every minute so "прошёл" appears on time
+  // and other people's bookings/cancellations show up without a manual reload.
+  setInterval(() => {
+    if (modal.classList.contains("hidden")) loadSlots(selectedDate, true);
+  }, 60000);
 })();
