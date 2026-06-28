@@ -217,6 +217,33 @@ async def create_booking(
     return booking
 
 
+async def bookings_due_for_reminder(
+    session: AsyncSession, hours_before: int
+) -> list[Booking]:
+    """Active bookings whose slot starts within the next `hours_before` hours
+    and that haven't been reminded yet."""
+    now = now_moscow()
+    today = now.date()
+    result = await session.execute(
+        select(Booking).where(
+            Booking.cancelled.is_(False),
+            Booking.reminded.is_(False),
+            Booking.date.in_([today, today + timedelta(days=1)]),
+        )
+    )
+    due = []
+    for b in result.scalars().all():
+        slot_start = TZ.localize(datetime(b.date.year, b.date.month, b.date.day, b.hour))
+        if slot_start - timedelta(hours=hours_before) <= now < slot_start:
+            due.append(b)
+    return due
+
+
+async def mark_reminded(session: AsyncSession, booking: Booking) -> None:
+    booking.reminded = True
+    await session.commit()
+
+
 async def get_booking(session: AsyncSession, booking_id: str) -> Booking | None:
     try:
         bid = uuid.UUID(booking_id)

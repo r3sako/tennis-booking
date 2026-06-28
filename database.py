@@ -41,6 +41,7 @@ class Booking(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     cancelled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    reminded: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
     __table_args__ = (
         CheckConstraint("hour >= 7 AND hour <= 21", name="ck_bookings_hour"),
@@ -59,6 +60,13 @@ async def init_db() -> None:
         # gen_random_uuid() lives in pgcrypto on older Postgres; ensure available.
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
         await conn.run_sync(Base.metadata.create_all)
+        # Add the reminder flag to pre-existing tables (create_all won't alter).
+        await conn.execute(
+            text(
+                "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS "
+                "reminded boolean NOT NULL DEFAULT false"
+            )
+        )
 
 
 async def get_session() -> AsyncSession:

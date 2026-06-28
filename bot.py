@@ -76,6 +76,19 @@ async def _send(text: str) -> None:
         logger.warning("Failed to send Telegram notification: %s", exc)
 
 
+async def send_dm(user_id: int, text: str) -> bool:
+    """Send a private message to a user (who has started the bot). Best-effort."""
+    bot = _get_bot()
+    if bot is None:
+        return False
+    try:
+        await bot.send_message(chat_id=user_id, text=text)
+        return True
+    except Exception as exc:  # user blocked the bot / never started it, etc.
+        logger.info("DM to %s failed: %s", user_id, exc)
+        return False
+
+
 async def is_chat_member(user_id: int) -> bool:
     """Return True if the user may log in.
 

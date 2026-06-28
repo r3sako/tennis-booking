@@ -53,6 +53,12 @@ def _parse_ids(raw: str) -> set[int]:
 # Telegram IDs exempt from the "1 booking per day" limit (e.g. the trainer).
 # Comma-separated, e.g. "111111111,222222222".
 UNLIMITED_USER_IDS = _parse_ids(os.getenv("UNLIMITED_USER_IDS", ""))
+
+# Send the user a DM this many hours before their slot. 0 = reminders off.
+try:
+    REMINDER_HOURS_BEFORE = int(os.getenv("REMINDER_HOURS_BEFORE", "2"))
+except ValueError:
+    REMINDER_HOURS_BEFORE = 2
 PORT = int(os.getenv("PORT", "8000"))
 # Set to false for local HTTP testing (cookie won't be sent over http otherwise).
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() == "true"

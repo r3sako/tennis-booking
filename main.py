@@ -21,6 +21,7 @@ from bot import (
     notify_cancellation,
     notify_new_booking,
     run_login_bot,
+    send_dm,
 )
 from config import (
     ADMIN_KEY,
@@ -28,6 +29,7 @@ from config import (
     COOKIE_NAME,
     COOKIE_SECURE,
     JWT_EXPIRE_DAYS,
+    REMINDER_HOURS_BEFORE,
     TG_BOT_USERNAME,
     UNLIMITED_USER_IDS,
 )
@@ -58,6 +60,31 @@ async def _periodic_cleanup() -> None:
             logger.warning("Periodic cleanup failed: %s", exc)
 
 
+REMINDER_INTERVAL_SECONDS = 300  # check for upcoming bookings every 5 minutes
+
+
+async def _reminder_loop() -> None:
+    """DM each user ~REMINDER_HOURS_BEFORE hours before their slot (once)."""
+    if REMINDER_HOURS_BEFORE <= 0:
+        return
+    while True:
+        await asyncio.sleep(REMINDER_INTERVAL_SECONDS)
+        try:
+            async with SessionLocal() as session:
+                due = await bk.bookings_due_for_reminder(session, REMINDER_HOURS_BEFORE)
+                for b in due:
+                    text = (
+                        f"🎾 Напоминание: у вас бронь корта "
+                        f"{b.date.strftime('%d.%m')} в {b.hour}:00–{b.hour + 1}:00.\n"
+                        f"Если не сможете прийти — отмените бронь на сайте, "
+                        f"чтобы слот достался другим."
+                    )
+                    await send_dm(b.tg_user_id, text)
+                    await bk.mark_reminded(session, b)
+        except Exception as exc:
+            logger.warning("Reminder loop failed: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
@@ -65,9 +92,11 @@ async def lifespan(app: FastAPI):
     await _run_cleanup("Startup")
     cleanup_task = asyncio.create_task(_periodic_cleanup())
     bot_task = asyncio.create_task(run_login_bot())
+    reminder_task = asyncio.create_task(_reminder_loop())
     yield
     cleanup_task.cancel()
     bot_task.cancel()
+    reminder_task.cancel()
     await close_bot()
 
 
