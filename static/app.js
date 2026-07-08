@@ -3,7 +3,6 @@
   const app = document.getElementById("app");
   const loggedIn = app.dataset.userId !== "";
   const userId = Number(app.dataset.userId);
-  const unlimited = app.dataset.unlimited === "true";
   const startIso = app.dataset.start;
 
   const grid = document.getElementById("slot-grid");
@@ -72,8 +71,7 @@
   }
 
   function renderSlots(slots) {
-    // Privileged users (e.g. the trainer) may book multiple slots per day.
-    const alreadyBooked = !unlimited && userBookedThisDay(slots);
+    const alreadyBooked = userBookedThisDay(slots);
     grid.innerHTML = "";
 
     slots.forEach((s) => {

@@ -3,7 +3,6 @@
 {% block body %}
 <div class="max-w-4xl mx-auto px-4 py-6"
      data-user-id="{% if user %}{{ user.tg_user_id }}{% endif %}"
-     data-unlimited="{{ 'true' if unlimited else '' }}"
      data-start="{{ start_iso }}"
      id="app">
 

@@ -31,7 +31,6 @@ from config import (
     JWT_EXPIRE_DAYS,
     REMINDER_HOURS_BEFORE,
     TG_BOT_USERNAME,
-    UNLIMITED_USER_IDS,
 )
 from database import SessionLocal, get_session, init_db
 
@@ -132,7 +131,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
         for i, d in enumerate(win_dates)
     ]
     current = await bk.get_current_booking(session)
-    unlimited = bool(user and user["tg_user_id"] in UNLIMITED_USER_IDS)
 
     return templates.TemplateResponse(
         request,
@@ -143,7 +141,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)):
             "dates": dates,
             "start_iso": win_dates[0].isoformat(),
             "current_booking": current,
-            "unlimited": unlimited,
         },
     )
 

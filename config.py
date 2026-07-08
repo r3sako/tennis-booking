@@ -38,21 +38,12 @@ NOTIFY_NEW_BOOKING = os.getenv("NOTIFY_NEW_BOOKING", "false").lower() == "true"
 ALLOWED_CHAT_ID = os.getenv("ALLOWED_CHAT_ID", "").strip()
 
 
-def _parse_ids(raw: str) -> set[int]:
-    ids: set[int] = set()
-    for part in raw.replace(";", ",").split(","):
-        part = part.strip()
-        if part:
-            try:
-                ids.add(int(part))
-            except ValueError:
-                pass
-    return ids
-
-
-# Telegram IDs exempt from the "1 booking per day" limit (e.g. the trainer).
-# Comma-separated, e.g. "111111111,222222222".
-UNLIMITED_USER_IDS = _parse_ids(os.getenv("UNLIMITED_USER_IDS", ""))
+# Max bookings a user may hold on future days (date > today). Today is exempt,
+# so an idle court can always be filled. 0 = unlimited.
+try:
+    MAX_FUTURE_BOOKINGS = int(os.getenv("MAX_FUTURE_BOOKINGS", "3"))
+except ValueError:
+    MAX_FUTURE_BOOKINGS = 3
 
 # Send the user a DM this many hours before their slot. 0 = reminders off.
 try:

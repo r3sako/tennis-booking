@@ -4,15 +4,15 @@ from datetime import date as date_cls
 from datetime import datetime, timedelta
 
 import pytz
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import (
     BOOKING_WINDOW_DAYS,
     LAST_SLOT_HOUR,
+    MAX_FUTURE_BOOKINGS,
     MOSCOW_TZ,
     OPEN_HOUR,
-    UNLIMITED_USER_IDS,
 )
 from database import Booking
 
@@ -163,6 +163,20 @@ async def user_has_booking_on(
     return result.first() is not None
 
 
+async def count_future_bookings(session: AsyncSession, tg_user_id: int) -> int:
+    """How many active bookings the user holds on future days (date > today)."""
+    result = await session.execute(
+        select(func.count())
+        .select_from(Booking)
+        .where(
+            Booking.tg_user_id == tg_user_id,
+            Booking.cancelled.is_(False),
+            Booking.date > today_moscow(),
+        )
+    )
+    return int(result.scalar_one())
+
+
 async def create_booking(
     session: AsyncSession,
     d: date_cls,
@@ -181,11 +195,21 @@ async def create_booking(
     if is_past_slot(d, hour):
         raise BookingError("Этот слот уже прошёл")
 
-    # One active booking per user per day — except privileged users (trainer).
-    if tg_user_id not in UNLIMITED_USER_IDS and await user_has_booking_on(
-        session, tg_user_id, d
-    ):
+    # One active booking per user per day.
+    if await user_has_booking_on(session, tg_user_id, d):
         raise BookingError("Вы уже бронировали корт на этот день")
+
+    # Max N bookings on future days. Today is exempt, so an idle court can
+    # always be filled even if the user is already at the limit.
+    if (
+        MAX_FUTURE_BOOKINGS > 0
+        and d > today_moscow()
+        and await count_future_bookings(session, tg_user_id) >= MAX_FUTURE_BOOKINGS
+    ):
+        raise BookingError(
+            f"Можно держать не более {MAX_FUTURE_BOOKINGS} будущих броней — "
+            f"отмените одну или запишитесь на сегодня."
+        )
 
     # Slot must be free (active booking on same date+hour).
     existing = await session.execute(
